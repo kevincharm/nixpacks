@@ -14,7 +14,7 @@ use anyhow::{bail, Context, Ok, Result};
 use std::{
     env,
     fs::{self, remove_dir_all, File},
-    process::Command,
+    process::{Command, Stdio},
 };
 use tempdir::TempDir;
 use uuid::Uuid;
@@ -83,7 +83,13 @@ impl ImageBuilder for DockerImageBuilder {
             let mut docker_build_cmd = self.get_docker_build_cmd(plan, name.as_str(), &output)?;
 
             // Execute docker build
-            let build_result = docker_build_cmd.spawn()?.wait().context("Building image")?;
+            let build_result = docker_build_cmd
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?
+                .wait()
+                .context("Building image")?;
             if !build_result.success() {
                 bail!("Docker build failed")
             }
